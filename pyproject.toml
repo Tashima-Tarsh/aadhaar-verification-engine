@@ -1,0 +1,63 @@
+[project]
+name = "aadhaar-verification-platform"
+version = "1.0.0"
+description = "Enterprise-grade Aadhaar Offline Verification, Risk & Identity Intelligence Platform"
+authors = [
+    { name = "Platform Engineering — FinTech Division" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.111.0",
+    "uvicorn[standard]",
+    "pydantic[email]>=2.0.0",
+    "sqlalchemy[asyncio]",
+    "asyncpg",
+    "redis",
+    "celery[redis]",
+    "opencv-python-headless",
+    "pyzbar",
+    "zxing-cpp",
+    "lxml",
+    "pdfplumber",
+    "cryptography",
+    "pikepdf",
+    "pdfminer.six",
+    "Pillow",
+    "scikit-image",
+    "deskew",
+    "structlog",
+    "python-multipart",
+    "alembic",
+    "python-dotenv"
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0.0",
+    "pytest-asyncio",
+    "pytest-cov",
+    "httpx",
+    "factory-boy",
+    "faker",
+    "pytest-mock",
+    "pytest-xdist",
+    "testcontainers[postgresql,redis]",
+    "hypothesis",
+    "locust",
+    "bandit",
+    "mypy",
+    "ruff"
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
