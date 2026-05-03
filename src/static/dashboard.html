@@ -56,6 +56,7 @@
             font-weight: 800;
             background: linear-gradient(90deg, #fff, #3b82f6);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
             display: flex;
             align-items: center;
@@ -214,6 +215,8 @@
         .mb-2 { margin-bottom: 2rem; }
         .mt-1 { margin-top: 1rem; }
         .mt-2 { margin-top: 2rem; }
+        .mt-05 { margin-top: 0.5rem; }
+        .my-upload { margin: 0.5rem 0 1.5rem 0; }
         .font-outfit { font-family: 'Outfit', sans-serif; }
         .text-dim { color: var(--text-dim); }
         .flex { display: flex; }
@@ -256,7 +259,7 @@
                 <div class="upload-section" onclick="document.getElementById('fileInput').click()">
                     <i data-lucide="cloud-upload" class="upload-icon" size="48"></i>
                     <h3>Upload Identity Document</h3>
-                    <p class="text-dim" style="margin: 0.5rem 0 1.5rem 0;">Aadhaar Image (JPG/PNG), PDF, or XML</p>
+                    <p class="text-dim my-upload">Aadhaar Image (JPG/PNG), PDF, or XML</p>
                     <button class="btn-primary">Select File</button>
                     <input type="file" id="fileInput" hidden onchange="handleFileUpload(event)">
                 </div>
@@ -296,11 +299,11 @@
                     <div class="mt-2 flex gap-1">
                         <div class="audit-item flex-1">
                             <span class="label">Processing Latency</span>
-                            <div id="resLatency" class="value fs-1-2" style="margin-top: 0.5rem;">0ms</div>
+                            <div id="resLatency" class="value fs-1-2 mt-05">0ms</div>
                         </div>
                         <div class="audit-item flex-1">
                             <span class="label">Quality Score</span>
-                            <div id="resQuality" class="value fs-1-2" style="margin-top: 0.5rem;">0.0</div>
+                            <div id="resQuality" class="value fs-1-2 mt-05">0.0</div>
                         </div>
                     </div>
                 </div>
