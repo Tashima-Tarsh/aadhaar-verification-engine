@@ -43,6 +43,7 @@
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid var(--glass-border);
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
             position: sticky;
             top: 0;
@@ -75,6 +76,7 @@
             border: 1px solid var(--glass-border);
             border-radius: 24px;
             padding: 2rem;
+            -webkit-backdrop-filter: blur(20px);
             backdrop-filter: blur(20px);
             transition: transform 0.3s ease, border-color 0.3s ease;
         }
@@ -207,6 +209,32 @@
         }
 
         .status-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; box-shadow: 0 0 10px var(--success); }
+
+        /* Classes to replace inline styles */
+        .mb-2 { margin-bottom: 2rem; }
+        .mt-1 { margin-top: 1rem; }
+        .mt-2 { margin-top: 2rem; }
+        .font-outfit { font-family: 'Outfit', sans-serif; }
+        .text-dim { color: var(--text-dim); }
+        .flex { display: flex; }
+        .gap-2 { gap: 2rem; }
+        .gap-1 { gap: 1rem; }
+        .align-start { align-items: flex-start; }
+        .justify-between { justify-content: space-between; }
+        .align-center { align-items: center; }
+        .flex-1 { flex: 1; }
+        .w-full { width: 100%; }
+        .h-full { height: 100%; }
+        .obj-cover { object-fit: cover; }
+        .hidden { display: none; }
+        .fs-1-8 { font-size: 1.8rem; }
+        .fs-1-1 { font-size: 1.1rem; }
+        .fs-1-2 { font-size: 1.2rem; }
+        .mb-1-5 { margin-bottom: 1.5rem; }
+        .mb-1 { margin-bottom: 1rem; }
+        .line-height-1-6 { line-height: 1.6; }
+        .text-success { color: var(--success); }
+        .inner-card { background: rgba(255,255,255,0.01); padding: 1.5rem; border-radius: 16px; }
     </style>
 </head>
 <body>
@@ -224,55 +252,55 @@
     <div class="container">
         <main>
             <div class="card">
-                <h2 style="margin-bottom: 2rem; font-family: 'Outfit';">Verification Hub</h2>
+                <h2 class="mb-2 font-outfit">Verification Hub</h2>
                 <div class="upload-section" onclick="document.getElementById('fileInput').click()">
                     <i data-lucide="cloud-upload" class="upload-icon" size="48"></i>
                     <h3>Upload Identity Document</h3>
-                    <p style="color: var(--text-dim); margin: 0.5rem 0 1.5rem 0;">Aadhaar Image (JPG/PNG), PDF, or XML</p>
+                    <p class="text-dim" style="margin: 0.5rem 0 1.5rem 0;">Aadhaar Image (JPG/PNG), PDF, or XML</p>
                     <button class="btn-primary">Select File</button>
                     <input type="file" id="fileInput" hidden onchange="handleFileUpload(event)">
                 </div>
 
                 <div id="loading">
                     <span class="loader"></span>
-                    <p style="margin-top: 1rem; color: var(--text-dim);">Analyzing document intelligence...</p>
+                    <p class="mt-1 text-dim">Analyzing document intelligence...</p>
                 </div>
 
                 <div id="results" class="results-grid">
-                    <div style="display: flex; gap: 2rem; align-items: flex-start;">
+                    <div class="flex gap-2 align-start">
                         <div class="photo-container">
-                            <img id="resPhoto" src="" alt="Aadhaar Photo" style="width: 100%; height: 100%; object-fit: cover; display: none;">
-                            <div id="photoPlaceholder" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--text-dim);">
+                            <img id="resPhoto" src="" alt="Aadhaar Photo" class="w-full h-full obj-cover hidden">
+                            <div id="photoPlaceholder" class="w-full h-full flex align-center justify-center text-dim">
                                 <i data-lucide="user"></i>
                             </div>
                         </div>
-                        <div style="flex: 1;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                                <h3 id="resName" style="font-size: 1.8rem; font-family: 'Outfit';">---</h3>
+                        <div class="flex-1">
+                            <div class="flex justify-between align-center mb-1-5">
+                                <h3 id="resName" class="fs-1-8 font-outfit">---</h3>
                                 <span id="resRisk" class="risk-badge">Low Risk</span>
                             </div>
                             <div class="data-point"><span class="label">Aadhaar Number</span><span id="resUid" class="value">XXXX-XXXX-XXXX</span></div>
                             <div class="data-point"><span class="label">Date of Birth</span><span id="resDob" class="value">---</span></div>
                             <div class="data-point"><span class="label">Gender</span><span id="resGender" class="value">---</span></div>
-                            <div class="data-point"><span class="label">Signature Status</span><span id="resQr" class="value" style="color: var(--success);">Validated</span></div>
+                            <div class="data-point"><span class="label">Signature Status</span><span id="resQr" class="value text-success">Validated</span></div>
                         </div>
                     </div>
                     
-                    <div style="margin-top: 2rem;">
-                        <h4 style="color: var(--text-dim); margin-bottom: 1rem;">Address Intelligence</h4>
-                        <div class="card" style="background: rgba(255,255,255,0.01); padding: 1.5rem; border-radius: 16px;">
-                            <p id="resAddress" style="line-height: 1.6; font-size: 1.1rem;">---</p>
+                    <div class="mt-2">
+                        <h4 class="text-dim mb-1">Address Intelligence</h4>
+                        <div class="card inner-card">
+                            <p id="resAddress" class="line-height-1-6 fs-1-1">---</p>
                         </div>
                     </div>
 
-                    <div style="margin-top: 2rem; display: flex; gap: 1rem;">
-                        <div class="audit-item" style="flex: 1;">
+                    <div class="mt-2 flex gap-1">
+                        <div class="audit-item flex-1">
                             <span class="label">Processing Latency</span>
-                            <div id="resLatency" class="value" style="font-size: 1.2rem; margin-top: 0.5rem;">0ms</div>
+                            <div id="resLatency" class="value fs-1-2" style="margin-top: 0.5rem;">0ms</div>
                         </div>
-                        <div class="audit-item" style="flex: 1;">
+                        <div class="audit-item flex-1">
                             <span class="label">Quality Score</span>
-                            <div id="resQuality" class="value" style="font-size: 1.2rem; margin-top: 0.5rem;">0.0</div>
+                            <div id="resQuality" class="value fs-1-2" style="margin-top: 0.5rem;">0.0</div>
                         </div>
                     </div>
                 </div>
@@ -280,7 +308,7 @@
         </main>
 
         <aside class="sidebar">
-            <div class="card" style="height: 100%;">
+            <div class="card h-full">
                 <h3>Live Intelligence</h3>
                 <div id="auditLog">
                     <div class="audit-item">
