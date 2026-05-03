@@ -1,39 +1,74 @@
 version: '3.8'
 
 services:
-  api:
-    build:
-      context: ..
-      dockerfile: docker/app.Dockerfile
-    ports:
-      - "8000:8000"
-    env_file:
-      - ../.env
-    depends_on:
-      - postgres
-      - redis
-
-  postgres:
+  db:
     image: postgres:15-alpine
+    container_name: aadhaar_db
     environment:
-      POSTGRES_USER: user
+      POSTGRES_DB: aadhaar_platform
+      POSTGRES_USER: admin
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: aadhaar_db
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   redis:
     image: redis:7-alpine
+    container_name: aadhaar_redis
     ports:
       - "6379:6379"
 
+  minio:
+    image: minio/minio
+    container_name: aadhaar_storage
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/app.Dockerfile
+    container_name: aadhaar_api
+    depends_on:
+      - db
+      - redis
+      - minio
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000
+
   worker:
     build:
-      context: ..
+      context: .
       dockerfile: docker/app.Dockerfile
-    command: celery -A src.workers.celery_app worker --loglevel=info
-    env_file:
-      - ../.env
+    container_name: aadhaar_worker
     depends_on:
       - redis
-      - postgres
+      - db
+    env_file:
+      - .env
+    command: celery -A src.workers.tasks worker --loglevel=info -Q aadhaar_verification
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/frontend.Dockerfile
+    container_name: aadhaar_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+
+volumes:
+  postgres_data:
+  minio_data:
