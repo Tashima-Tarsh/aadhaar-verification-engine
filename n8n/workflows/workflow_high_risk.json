@@ -1,0 +1,43 @@
+{
+  "name": "Aadhaar Verification — High Risk Escalation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "aadhaar-high-risk",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [{"value1": "={{$json[\"risk_score\"]}}", "operation": "equals", "value2": "HIGH"}]
+        }
+      },
+      "name": "Filter High Risk",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const item = $input.item.json;\nreturn [{\n  json: {\n    alert: 'HIGH_RISK_IDENTITY',\n    severity: 'CRITICAL',\n    reference_id: item.reference_id,\n    name: item.name,\n    masked_aadhaar: item.masked_aadhaar,\n    risk_score: item.risk_score,\n    risk_numeric: item.risk_numeric,\n    qr_valid: item.qr_valid,\n    liveness_result: item.liveness_result,\n    requires_manual_review: true,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "name": "Format Escalation",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [750, 200]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Filter High Risk", "type": "main", "index": 0}]]},
+    "Filter High Risk": {"main": [[{"node": "Format Escalation", "type": "main", "index": 0}], []]}
+  },
+  "active": true,
+  "settings": {}
+}

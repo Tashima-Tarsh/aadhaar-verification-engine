@@ -12,12 +12,22 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d aadhaar_platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
     container_name: aadhaar_redis
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   minio:
     image: minio/minio
@@ -31,6 +41,11 @@ services:
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   api:
     build:
@@ -38,37 +53,89 @@ services:
       dockerfile: docker/app.Dockerfile
     container_name: aadhaar_api
     depends_on:
-      - db
-      - redis
-      - minio
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     ports:
       - "8000:8000"
     env_file:
       - .env
-    command: uvicorn src.main:app --host 0.0.0.0 --port 8000
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --workers 2
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
 
   worker:
     build:
       context: .
-      dockerfile: docker/app.Dockerfile
+      dockerfile: docker/worker.Dockerfile
     container_name: aadhaar_worker
     depends_on:
-      - redis
-      - db
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     env_file:
       - .env
-    command: celery -A src.workers.tasks worker --loglevel=info -Q aadhaar_verification
+    command: celery -A src.workers.tasks worker --loglevel=info -Q aadhaar_verification --concurrency=4
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import os,time; age=time.time()-os.path.getmtime('/tmp/worker_healthy'); exit(0 if age<45 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  worker_dlq:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    container_name: aadhaar_worker_dlq
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    command: celery -A src.workers.tasks worker --loglevel=warning -Q aadhaar_dlq --concurrency=1
+    restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
       dockerfile: ../docker/frontend.Dockerfile
     container_name: aadhaar_frontend
+    depends_on:
+      - api
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_URL=http://api:8000
+    restart: unless-stopped
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: aadhaar_n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=n8npassword
+      - WEBHOOK_URL=http://localhost:5678
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n/workflows:/home/node/.n8n/workflows
+    restart: unless-stopped
 
 volumes:
   postgres_data:
   minio_data:
+  n8n_data:

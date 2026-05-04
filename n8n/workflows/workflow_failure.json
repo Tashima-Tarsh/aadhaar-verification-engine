@@ -1,0 +1,43 @@
+{
+  "name": "Aadhaar Verification — Failure Alert",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "aadhaar-failure",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [{"value1": "={{$json[\"status\"]}}", "operation": "equals", "value2": "FAILED"}]
+        }
+      },
+      "name": "Filter Failed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const item = $input.item.json;\nreturn [{\n  json: {\n    alert: 'VERIFICATION_FAILED',\n    reference_id: item.reference_id,\n    error_code: item.error_code,\n    error_message: item.error_message,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "name": "Format Alert",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [750, 200]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Filter Failed", "type": "main", "index": 0}]]},
+    "Filter Failed": {"main": [[{"node": "Format Alert", "type": "main", "index": 0}], []]}
+  },
+  "active": true,
+  "settings": {}
+}

@@ -14,7 +14,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/ intentionally not ignored — frontend/src/lib is source code
 lib64/
 parts/
 sdist/
@@ -148,3 +148,13 @@ cython_debug/
 # Certificates
 certs/*.pem
 !certs/uidai_auth.pem.example
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env.local
+
+# IDE
+.vscode/
+.idea/

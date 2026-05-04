@@ -1,11 +1,24 @@
+"""
+VerificationService — fixed:
+  - Removed VerificationStatus import (was missing from models)
+  - Uses string literals for status matching models
+  - Added idempotency, audit logging, webhook dispatch
+"""
+import uuid
+import logging
+from typing import Dict, Any, Optional
+from uuid import UUID
+
 from src.db.repositories.verification_repo import VerificationRepository
 from src.core.orchestrator import VerificationOrchestrator
-from src.db.models import VerificationStatus
-from typing import Dict, Any
-from uuid import UUID
-import logging
+from src.services.webhook_service import WebhookService
 
 logger = logging.getLogger(__name__)
+
+PROCESSING = "PROCESSING"
+COMPLETED  = "COMPLETED"
+FAILED     = "FAILED"
+
 
 class VerificationService:
     def __init__(self, repo: VerificationRepository):
@@ -13,77 +26,82 @@ class VerificationService:
         self.orchestrator = VerificationOrchestrator()
 
     async def process_single_verification(
-        self, 
-        tenant_id: UUID, 
-        reference_id: str, 
-        file_bytes: bytes, 
+        self,
+        tenant_id: UUID,
+        reference_id: str,
+        file_bytes: bytes,
         source_type: str,
-        metadata: Dict[str, Any] = None
+        password: Optional[str] = None,
+        selfie_bytes: Optional[bytes] = None,
+        webhook_url: Optional[str] = None,
+        webhook_secret: Optional[str] = None,
+        metadata: Dict[str, Any] = None,
     ) -> Dict[str, Any]:
-        # 1. Check idempotency
-        existing_request = await self.repo.get_request_by_reference(reference_id, tenant_id)
-        if existing_request:
-            # If already completed, return result
-            if existing_request.status == VerificationStatus.COMPLETED:
-                # Return result from DB (simplified)
-                return {"status": "COMPLETED", "request_id": existing_request.id, "reference_id": reference_id}
-        
-        # 2. Create request record
-        request_data = {
-            "reference_id": reference_id,
-            "tenant_id": tenant_id,
-            "source_type": source_type,
-            "file_path": f"uploads/{reference_id}", # Simplified
-            "status": VerificationStatus.PROCESSING
-        }
-        request = await self.repo.create_request(request_data)
 
-        # 3. Log start
-        await self.repo.create_audit_log({
-            "tenant_id": tenant_id,
-            "request_id": request.id,
-            "event_type": "PROCESSING_STARTED",
-            "actor": "API_KEY_HOLDER"
+        # 1. Idempotency check
+        existing = await self.repo.get_request_by_reference(reference_id, tenant_id)
+        if existing and existing.status == COMPLETED:
+            return {"status": COMPLETED, "request_id": str(existing.id), "reference_id": reference_id, "idempotent": True}
+
+        # 2. Create request record
+        request = await self.repo.create_request({
+            "reference_id": reference_id,
+            "tenant_id":    tenant_id,
+            "source_type":  source_type,
+            "status":       PROCESSING,
         })
 
-        # 4. Run Orchestrator
+        # 3. Audit: start
+        await self.repo.create_audit_log({
+            "request_id":     request.id,
+            "event_type":     "PROCESSING_STARTED",
+            "event_metadata": {"source_type": source_type, "has_selfie": selfie_bytes is not None},
+        })
+
+        # 4. Run orchestrator
         try:
-            result = await self.orchestrator.verify_image(file_bytes)
-            
-            # 5. Persist result
-            result_data = {
-                "request_id": request.id,
-                **result,
-                # Mapping address dict to flat fields for DB
-                "address_full": result.get('address', {}).get('full'),
-                "state": result.get('address', {}).get('state'),
-                "district": result.get('address', {}).get('district'),
-                "pincode": result.get('address', {}).get('pincode'),
-                "address_status": "COMPLETE"
-            }
-            # Clean up result_data to match model
-            model_fields = {
-                "request_id", "qr_valid", "name", "dob", "gender", "masked_aadhaar",
-                "photo_status", "photo_data", "address_full", "state", "district",
-                "pincode", "address_status", "risk_score", "processing_time_ms",
-                "error_code", "error_message"
-            }
-            db_result_data = {k: v for k, v in result_data.items() if k in model_fields}
-            
-            await self.repo.save_result(db_result_data)
-            await self.repo.update_request_status(request.id, result['status'])
-
-            # 6. Log completion
-            await self.repo.create_audit_log({
-                "tenant_id": tenant_id,
-                "request_id": request.id,
-                "event_type": "COMPLETED" if result['status'] == "COMPLETED" else "FAILED",
-                "actor": "SYSTEM"
-            })
-
-            return {**result, "request_id": request.id, "reference_id": reference_id}
-
+            result = await self.orchestrator.verify_document(
+                file_bytes, source_type, password=password, selfie_bytes=selfie_bytes
+            )
         except Exception as e:
-            logger.error(f"Error in verification service: {e}")
-            await self.repo.update_request_status(request.id, VerificationStatus.FAILED)
-            return {"status": "FAILED", "error_code": "ERR_INTERNAL_SERVER", "request_id": request.id}
+            logger.error(f"Orchestrator error for {reference_id}: {e}", exc_info=True)
+            await self.repo.update_request_status(request.id, FAILED)
+            await self.repo.create_audit_log({"request_id": request.id, "event_type": "FAILED", "event_metadata": {"error": str(e)}})
+            return {"status": FAILED, "error_code": "ERR_INTERNAL", "request_id": str(request.id), "reference_id": reference_id}
+
+        final_status = COMPLETED if result.get("status") == COMPLETED else FAILED
+
+        # 5. Persist result
+        photo = result.get("photo_data")
+        addr  = result.get("address", {})
+        await self.repo.save_result({
+            "request_id":         request.id,
+            "full_name":          result.get("name"),
+            "masked_uid":         result.get("masked_aadhaar"),
+            "dob":                result.get("dob"),
+            "gender":             result.get("gender"),
+            "address_json":       addr,
+            "photo_storage_key":  None,  # populated by photo service when stored
+            "processing_time_ms": result.get("processing_time_ms"),
+        })
+        await self.repo.update_request_status(request.id, final_status)
+
+        # 6. Audit: completion
+        await self.repo.create_audit_log({
+            "request_id":     request.id,
+            "event_type":     final_status,
+            "event_metadata": {"risk_score": result.get("risk_score"), "processing_ms": result.get("processing_time_ms")},
+        })
+
+        # 7. Webhook dispatch (fire-and-forget)
+        if webhook_url:
+            import asyncio
+            asyncio.create_task(WebhookService.dispatch(
+                webhook_url,
+                {**result, "request_id": str(request.id), "reference_id": reference_id, "photo_data": None},
+                secret=webhook_secret,
+            ))
+
+        # Strip raw photo bytes from API response
+        result.pop("photo_data", None)
+        return {**result, "request_id": str(request.id), "reference_id": reference_id}
