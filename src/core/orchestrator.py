@@ -1,14 +1,27 @@
+"""
+VerificationOrchestrator — full 7-stage pipeline (no mock data).
+Stage 1: Image Preprocessing
+Stage 2: QR Detection & Decode
+Stage 3: Signature Validation
+Stage 4: Data Extraction (XML/PDF/ZIP)
+Stage 5: Photo Extraction
+Stage 6: Address Normalization
+Stage 7: Risk Scoring
+"""
 import time
 import logging
 from typing import Dict, Any, Optional
-from src.engines.preprocessing import run_preprocessing_pipeline
+
+from src.engines.preprocessing import run_preprocessing_pipeline, assess_quality, load_image
 from src.engines.qr_decoder import decode_qr
 from src.engines.signature_validator import SignatureValidator
+from src.engines.aadhaar_verifier import verify_aadhaar_qr
 from src.engines.address_normalizer import AddressNormalizer
 from src.core.risk_scorer import RiskScoringEngine, RiskSignals
 from src.config.settings import settings
 
 logger = logging.getLogger(__name__)
+
 
 class VerificationOrchestrator:
     def __init__(self):
@@ -16,81 +29,157 @@ class VerificationOrchestrator:
         self.address_normalizer = AddressNormalizer()
         self.risk_scorer = RiskScoringEngine()
 
-    async def verify_image(self, image_bytes: bytes) -> Dict[str, Any]:
-        start_time = time.time()
-        
-        # 1. Preprocessing
-        processed_image = run_preprocessing_pipeline(image_bytes)
-        
-        # 2. QR Decoding
-        qr_data = decode_qr(processed_image)
+    async def verify_image(self, image_bytes: bytes, selfie_bytes: Optional[bytes] = None) -> Dict[str, Any]:
+        start = time.time()
+
+        # Stage 1: quality assessment + preprocessing
+        raw_img = load_image(image_bytes)
+        quality = assess_quality(raw_img)
+        processed = run_preprocessing_pipeline(image_bytes)
+
+        # Stage 2: QR decode
+        qr_data = decode_qr(processed)
         if not qr_data:
-            return self._error_response("ERR_INPUT_NO_QR_DETECTED", "No QR code detected in image", start_time)
+            return self._error("ERR_QR_NOT_DETECTED", "No QR code detected in image", start, quality)
 
-        # 3. Signature Validation
-        is_valid, signed_data = self.signature_validator.verify_signature(qr_data)
-        if not is_valid:
-            return self._error_response("ERR_QR_SIGNATURE_INVALID", "UIDAI digital signature verification failed", start_time)
+        # Stage 3 + 4: Verify + extract via Aadhaar verifier (handles V1/V2)
+        data = verify_aadhaar_qr(qr_data)
+        if not data or data.get("error"):
+            return self._error("ERR_QR_PARSE_FAILED", data.get("error", "QR parsing failed"), start, quality)
 
-        # 4. Data Extraction (Simplified for demo)
-        # In real scenario, signed_data contains XML or encoded bytes
-        extracted_data = self._parse_aadhaar_data(signed_data)
-        
-        # 5. Risk Scoring
+        sig_valid = data.get("signature_valid", False)
+
+        # Stage 5: Photo extraction
+        photo_bytes = data.get("photo")
+        photo_status = "AVAILABLE" if photo_bytes else "NOT_AVAILABLE"
+
+        # Stage 6: Address normalization
+        raw_addr = data.get("address") or {}
+        addr = self.address_normalizer.normalize_full(raw_addr)
+
+        # Liveness (optional)
+        liveness_passed = None
+        liveness_conf = None
+        if settings.LIVENESS_ENABLED and selfie_bytes:
+            from src.core.liveness import LivenessModule
+            module = LivenessModule()
+            liveness_passed, liveness_conf = module.verify_liveness(
+                selfie_bytes, photo_bytes, use_deepface=True
+            )
+
+        # Data completeness
+        fields = [data.get("name"), data.get("dob"), data.get("gender"), data.get("masked_uid")]
+        data_completeness = sum(1 for f in fields if f) / len(fields)
+
+        # Stage 7: Risk scoring
         signals = RiskSignals(
-            qr_signature_valid=True,
-            image_quality_score=0.85, # Mock for now
-            address_completeness="COMPLETE" if extracted_data.get('address') else "PARTIAL",
-            photo_available="AVAILABLE" if extracted_data.get('photo') else "NOT_AVAILABLE",
-            liveness_passed=None
+            qr_signature_valid=sig_valid,
+            image_quality_score=quality,
+            address_completeness=addr.status,
+            photo_available=photo_status,
+            data_completeness=data_completeness,
+            liveness_passed=liveness_passed,
         )
         risk_score, risk_class = self.risk_scorer.compute_score(signals)
 
-        processing_time = int((time.time() - start_time) * 1000)
+        return {
+            "status": "COMPLETED",
+            "qr_valid": sig_valid,
+            "qr_version": data.get("qr_version", 2),
+            "name": data.get("name"),
+            "dob": data.get("dob"),
+            "gender": data.get("gender"),
+            "masked_aadhaar": data.get("masked_uid"),
+            "photo_status": photo_status,
+            "photo_data": photo_bytes,
+            "address": {
+                "full": addr.full,
+                "house": addr.house,
+                "street": addr.street,
+                "landmark": addr.landmark,
+                "city": addr.city,
+                "district": addr.district,
+                "state": addr.state,
+                "pincode": addr.pincode,
+                "status": addr.status,
+            },
+            "risk_score": risk_class.value,
+            "risk_numeric": risk_score,
+            "liveness_result": "PASS" if liveness_passed else ("FAIL" if liveness_passed is False else "NOT_APPLICABLE"),
+            "liveness_confidence": liveness_conf,
+            "image_quality_score": quality,
+            "processing_time_ms": int((time.time() - start) * 1000),
+        }
+
+    async def verify_document(
+        self, file_bytes: bytes, source_type: str,
+        password: Optional[str] = None,
+        selfie_bytes: Optional[bytes] = None,
+    ) -> Dict[str, Any]:
+        """Route to correct verifier based on source_type."""
+        start = time.time()
+
+        if source_type == "IMAGE":
+            return await self.verify_image(file_bytes, selfie_bytes)
+
+        from src.engines.document_processor import DocumentProcessor
+        dp = DocumentProcessor()
+        try:
+            if source_type == "PDF":
+                data = dp.process_pdf(file_bytes, password or "")
+            elif source_type == "XML":
+                data = dp.process_zip(file_bytes, password or "")
+            else:
+                return self._error("ERR_UNKNOWN_TYPE", f"Unsupported source_type: {source_type}", start)
+        except ValueError as e:
+            return self._error("ERR_DOCUMENT_DECRYPT", str(e), start)
+
+        # Reuse image verify flow but with already-extracted data
+        sig_valid = data.get("signature_valid", False)
+        photo_bytes = data.get("photo")
+        raw_addr = data.get("address") or {}
+        addr = self.address_normalizer.normalize_full(raw_addr)
+
+        liveness_passed = None
+        if settings.LIVENESS_ENABLED and selfie_bytes and photo_bytes:
+            from src.core.liveness import LivenessModule
+            liveness_passed, _ = LivenessModule().verify_liveness(selfie_bytes, photo_bytes, use_deepface=True)
+
+        fields = [data.get("name"), data.get("dob"), data.get("gender"), data.get("masked_uid")]
+        data_completeness = sum(1 for f in fields if f) / len(fields)
+
+        signals = RiskSignals(
+            qr_signature_valid=sig_valid,
+            image_quality_score=1.0,
+            address_completeness=addr.status,
+            photo_available="AVAILABLE" if photo_bytes else "NOT_AVAILABLE",
+            data_completeness=data_completeness,
+            liveness_passed=liveness_passed,
+        )
+        risk_score, risk_class = self.risk_scorer.compute_score(signals)
 
         return {
             "status": "COMPLETED",
-            "qr_valid": True,
-            "name": extracted_data.get('name'),
-            "dob": extracted_data.get('dob'),
-            "gender": extracted_data.get('gender'),
-            "masked_aadhaar": self._mask_aadhaar(extracted_data.get('uid')),
-            "photo_status": "AVAILABLE" if extracted_data.get('photo') else "NOT_AVAILABLE",
-            "photo_data": extracted_data.get('photo'),
-            "address": {
-                "full": self.address_normalizer.normalize(extracted_data.get('address')),
-                "state": self.address_normalizer.standardize_state(extracted_data.get('state')),
-                "district": extracted_data.get('dist'),
-                "pincode": self.address_normalizer.extract_pincode(extracted_data.get('address')),
-                "status": "COMPLETE"
-            },
-            "risk_score": risk_class,
-            "processing_time_ms": processing_time
+            "qr_valid": sig_valid,
+            "name": data.get("name"),
+            "dob": data.get("dob"),
+            "gender": data.get("gender"),
+            "masked_aadhaar": data.get("masked_uid"),
+            "photo_status": "AVAILABLE" if photo_bytes else "NOT_AVAILABLE",
+            "photo_data": photo_bytes,
+            "address": {"full": addr.full, "district": addr.district, "state": addr.state, "pincode": addr.pincode, "status": addr.status},
+            "risk_score": risk_class.value,
+            "risk_numeric": risk_score,
+            "liveness_result": "PASS" if liveness_passed else ("FAIL" if liveness_passed is False else "NOT_APPLICABLE"),
+            "image_quality_score": 1.0,
+            "processing_time_ms": int((time.time() - start) * 1000),
         }
 
-    def _parse_aadhaar_data(self, data: bytes) -> Dict[str, Any]:
-        # Mock parser for demo
-        # Real Aadhaar Secure QR uses a specific byte encoding
-        return {
-            "name": "John Doe",
-            "dob": "1990-01-01",
-            "gender": "M",
-            "uid": "123456789012",
-            "address": "Plot 15, Sector 4, New Delhi - 110001",
-            "state": "Delhi",
-            "dist": "New Delhi",
-            "photo": "base64_encoded_photo_placeholder"
-        }
-
-    def _mask_aadhaar(self, uid: str) -> str:
-        if not uid or len(uid) < 4:
-            return "XXXX-XXXX-XXXX"
-        return f"XXXX-XXXX-{uid[-4:]}"
-
-    def _error_response(self, code: str, msg: str, start_time: float) -> Dict[str, Any]:
+    def _error(self, code: str, msg: str, start: float, quality: float = 0.0) -> Dict[str, Any]:
         return {
             "status": "FAILED",
             "error_code": code,
             "error_message": msg,
-            "processing_time_ms": int((time.time() - start_time) * 1000)
+            "image_quality_score": quality,
+            "processing_time_ms": int((time.time() - start) * 1000),
         }
