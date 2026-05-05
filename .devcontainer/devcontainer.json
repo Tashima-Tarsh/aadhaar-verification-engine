@@ -1,0 +1,43 @@
+{
+  "name": "Aadhaar Verification Platform",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11-bullseye",
+
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "20" },
+    "ghcr.io/devcontainers/features/redis:1": { "version": "latest" },
+    "ghcr.io/devcontainers/features/postgres:1": {
+      "version": "15",
+      "initializeCommand": ""
+    }
+  },
+
+  "forwardPorts": [3000, 8000, 5432, 6379],
+
+  "portsAttributes": {
+    "3000": {
+      "label": "Operator Dashboard",
+      "onAutoForward": "openBrowser",
+      "visibility": "public"
+    },
+    "8000": {
+      "label": "API + Swagger Docs",
+      "onAutoForward": "openBrowser",
+      "visibility": "public"
+    }
+  },
+
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "postStartCommand": "bash .devcontainer/start.sh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "rangav.vscode-thunder-client"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  }
+}
