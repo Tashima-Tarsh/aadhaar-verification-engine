@@ -49,8 +49,12 @@ async def refresh_token(
     if not payload or payload.get("type") != "refresh":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
 
-    tenant_id = payload.get("sub")
-    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id, Tenant.is_active == True))
+    import uuid as _uuid
+    try:
+        tenant_uuid = _uuid.UUID(payload.get("sub"))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token subject")
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_uuid, Tenant.is_active == True))
     tenant = result.scalar_one_or_none()
     if not tenant:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Tenant not found")

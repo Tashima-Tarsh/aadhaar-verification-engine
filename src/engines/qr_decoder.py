@@ -95,11 +95,16 @@ def _try_all_strategies(img: np.ndarray) -> Optional[bytes]:
     return None
 
 
-def decode_qr(image: np.ndarray) -> Optional[bytes]:
+def decode_qr(image) -> Optional[bytes]:
     """
     Full cascade: cardinal rotations → multi-scale → diagonal → ML fallback.
-    Accepts a preprocessed grayscale image.
+    Accepts a preprocessed grayscale np.ndarray or raw image bytes.
     """
+    if isinstance(image, (bytes, bytearray)):
+        arr = np.frombuffer(image, dtype=np.uint8)
+        image = cv2.imdecode(arr, cv2.IMREAD_GRAYSCALE)
+        if image is None:
+            return None
     # 1. Cardinal rotations (0°, 90°, 180°, 270°) at original scale
     for angle in CARDINAL_ANGLES:
         rotated = _rotate(image, angle)

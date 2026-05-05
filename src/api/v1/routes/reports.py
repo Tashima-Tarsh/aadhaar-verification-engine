@@ -7,7 +7,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, case
 
 from src.api.v1.dependencies.auth import get_current_tenant
 from src.api.v1.schemas.verify import ReportSummarySchema
@@ -30,7 +30,7 @@ async def get_summary(
         select(
             func.count(VerificationRequest.id).label("total"),
             func.sum(
-                func.cast(VerificationRequest.status == "COMPLETED", db.bind.dialect.INTEGERTYPE if hasattr(db.bind, "dialect") else int)
+                case((VerificationRequest.status == "COMPLETED", 1), else_=0)
             ).label("completed"),
         ).where(
             VerificationRequest.tenant_id == tenant.id,
