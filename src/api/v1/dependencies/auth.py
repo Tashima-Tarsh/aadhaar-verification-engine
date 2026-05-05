@@ -29,10 +29,15 @@ async def get_current_tenant(
     if token:
         payload = AuthHandler.decode_token(token)
         if payload and payload.get("type") == "access":
-            tenant_id = payload.get("sub")
-            result = await db.execute(select(Tenant).where(Tenant.id == tenant_id, Tenant.is_active == True))
-            tenant = result.scalar_one_or_none()
-            if tenant:
-                return tenant
+            import uuid as _uuid
+            try:
+                tenant_uuid = _uuid.UUID(payload.get("sub"))
+            except (TypeError, ValueError):
+                pass
+            else:
+                result = await db.execute(select(Tenant).where(Tenant.id == tenant_uuid, Tenant.is_active == True))
+                tenant = result.scalar_one_or_none()
+                if tenant:
+                    return tenant
 
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or missing credentials")

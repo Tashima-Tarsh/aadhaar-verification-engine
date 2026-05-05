@@ -68,18 +68,21 @@ async def verify_aadhaar(
         "status": "PENDING",
     })
 
-    process_verification_task.apply_async(
-        kwargs={
-            "tenant_id": str(tenant.id),
-            "reference_id": reference_id,
-            "storage_key": storage_key,
-            "source_type": source_type,
-            "password_encrypted": password_encrypted,
-            "webhook_url": tenant.webhook_url,
-            "webhook_secret": tenant.webhook_secret,
-        },
-        queue="aadhaar_verification",
-    )
+    try:
+        process_verification_task.apply_async(
+            kwargs={
+                "tenant_id": str(tenant.id),
+                "reference_id": reference_id,
+                "storage_key": storage_key,
+                "source_type": source_type,
+                "password_encrypted": password_encrypted,
+                "webhook_url": tenant.webhook_url,
+                "webhook_secret": tenant.webhook_secret,
+            },
+            queue="aadhaar_verification",
+        )
+    except Exception as e:
+        logger.warning(f"Celery dispatch failed (broker unavailable): {e}. Request saved, will retry when broker reconnects.")
 
     return {
         "request_id": request.id,

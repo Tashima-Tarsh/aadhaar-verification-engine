@@ -4,9 +4,17 @@ DB models — merged: user's Tenant + BulkJob multi-tenancy
 """
 import uuid
 import datetime
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Float, Text, Boolean
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Float, Text, Boolean, JSON
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship, declarative_base
+import os
+
+# Use JSONB on PostgreSQL, plain JSON on SQLite (test/local)
+_db_url = os.environ.get("DATABASE_URL", "")
+if _db_url.startswith("postgresql"):
+    from sqlalchemy.dialects.postgresql import JSONB
+else:
+    JSONB = JSON
 
 Base = declarative_base()
 

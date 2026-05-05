@@ -1,5 +1,6 @@
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.x509 import load_pem_x509_certificate
 from typing import Tuple, Optional
 import logging
 
@@ -13,7 +14,18 @@ class SignatureValidator:
     def _load_public_key(self):
         try:
             with open(self.public_key_path, "rb") as key_file:
-                return serialization.load_pem_public_key(key_file.read())
+                data = key_file.read()
+            # Try X.509 certificate first (UIDAI ships certs not raw keys)
+            try:
+                cert = load_pem_x509_certificate(data)
+                logger.info("UIDAI public key loaded from X.509 certificate")
+                return cert.public_key()
+            except Exception:
+                pass
+            # Fallback: raw PEM public key
+            key = serialization.load_pem_public_key(data)
+            logger.info("UIDAI public key loaded from PEM public key")
+            return key
         except Exception as e:
             logger.error(f"Failed to load UIDAI public key: {e}")
             raise
@@ -40,3 +52,4 @@ class SignatureValidator:
         except Exception as e:
             logger.warning(f"Signature verification failed: {e}")
             return False, None
+
