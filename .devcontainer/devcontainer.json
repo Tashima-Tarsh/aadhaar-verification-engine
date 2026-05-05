@@ -5,39 +5,34 @@
   "features": {
     "ghcr.io/devcontainers/features/node:1": { "version": "20" },
     "ghcr.io/devcontainers/features/redis:1": { "version": "latest" },
-    "ghcr.io/devcontainers/features/postgres:1": {
-      "version": "15",
-      "initializeCommand": ""
-    }
+    "ghcr.io/devcontainers/features/postgres:1": { "version": "15" }
   },
 
-  "forwardPorts": [3000, 8000, 5432, 6379],
+  "forwardPorts": [8000, 3000],
 
   "portsAttributes": {
-    "3000": {
-      "label": "Operator Dashboard",
-      "onAutoForward": "openBrowser",
+    "8000": {
+      "label": "API",
+      "onAutoForward": "notify",
       "visibility": "public"
     },
-    "8000": {
-      "label": "API + Swagger Docs",
+    "3000": {
+      "label": "Dashboard",
       "onAutoForward": "openBrowser",
       "visibility": "public"
     }
   },
 
-  "postCreateCommand": "bash .devcontainer/setup.sh",
-  "postStartCommand": "bash .devcontainer/start.sh",
+  "postCreateCommand": "bash .devcontainer/install.sh",
 
   "customizations": {
     "vscode": {
-      "extensions": [
-        "ms-python.python",
-        "rangav.vscode-thunder-client"
-      ],
+      "extensions": ["ms-python.python", "rangav.vscode-thunder-client"],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash"
       }
     }
-  }
+  },
+
+  "onCreateCommand": "echo '✅ Codespace created. Run: bash start.sh' > /tmp/welcome.txt"
 }
