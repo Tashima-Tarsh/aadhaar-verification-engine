@@ -8,31 +8,16 @@
     "ghcr.io/devcontainers/features/postgres:1": { "version": "15" }
   },
 
-  "forwardPorts": [8000, 3000],
+  "forwardPorts": [8000],
 
   "portsAttributes": {
     "8000": {
-      "label": "API",
-      "onAutoForward": "notify",
-      "visibility": "public"
-    },
-    "3000": {
-      "label": "Dashboard",
+      "label": "Aadhaar Dashboard",
       "onAutoForward": "openBrowser",
       "visibility": "public"
     }
   },
 
   "postCreateCommand": "bash .devcontainer/install.sh",
-
-  "customizations": {
-    "vscode": {
-      "extensions": ["ms-python.python", "rangav.vscode-thunder-client"],
-      "settings": {
-        "terminal.integrated.defaultProfile.linux": "bash"
-      }
-    }
-  },
-
-  "onCreateCommand": "echo '✅ Codespace created. Run: bash start.sh' > /tmp/welcome.txt"
+  "postStartCommand": "bash .devcontainer/autostart.sh"
 }
