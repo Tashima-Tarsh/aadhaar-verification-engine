@@ -3,20 +3,38 @@ set -e
 
 echo ""
 echo "=================================================="
-echo "  Aadhaar Verification Platform — Codespace Setup"
+echo "  Aadhaar Platform — Installing Dependencies"
 echo "=================================================="
-echo ""
 
-# ── 1. Generate .env if not present ─────────────────────────────────────────
-if [ ! -f ".env" ]; then
-  echo "[1/4] Generating .env with secure keys..."
-  ENCRYPTION_KEY=$(python3 -c "import secrets; print(secrets.token_hex(32))")
-  JWT_SECRET=$(python3 -c "import secrets; print(secrets.token_urlsafe(48))")
+# ── Python dependencies ──────────────────────────────────────────────────────
+echo "[1/5] Installing Python packages..."
+pip install --quiet --upgrade pip
+pip install --quiet \
+  fastapi uvicorn[standard] sqlalchemy[asyncio] aiosqlite asyncpg \
+  pydantic pydantic-settings python-jose[cryptography] passlib[bcrypt] \
+  python-multipart celery[redis] redis kombu \
+  cryptography pillow opencv-python-headless numpy \
+  pyzbar zxing-cpp qreader \
+  pikepdf pyzipper lxml \
+  boto3 pandas aiofiles \
+  structlog sentry-sdk[fastapi] \
+  httpx pytest pytest-asyncio
+echo "    Python packages installed."
 
-  cat > .env <<EOF
-DATABASE_URL=postgresql+asyncpg://admin:password@db:5432/aadhaar_platform
-REDIS_URL=redis://redis:6379/0
-STORAGE_ENDPOINT=http://minio:9000
+# ── Node / frontend dependencies ─────────────────────────────────────────────
+echo "[2/5] Installing frontend dependencies..."
+cd frontend && npm install --silent 2>/dev/null || true && cd ..
+echo "    Frontend dependencies installed."
+
+# ── Generate .env ────────────────────────────────────────────────────────────
+echo "[3/5] Generating .env..."
+ENCRYPTION_KEY=$(python3 -c "import secrets; print(secrets.token_hex(32))")
+JWT_SECRET=$(python3 -c "import secrets; print(secrets.token_urlsafe(48))")
+
+cat > .env <<EOF
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/aadhaar_platform
+REDIS_URL=redis://localhost:6379/0
+STORAGE_ENDPOINT=http://localhost:9000
 STORAGE_ACCESS_KEY=minioadmin
 STORAGE_SECRET_KEY=minioadmin
 STORAGE_BUCKET=aadhaar-platform
@@ -36,39 +54,32 @@ LIVENESS_ENABLED=false
 LOG_LEVEL=INFO
 SENTRY_DSN=
 EOF
-  echo "    .env created with auto-generated secure keys."
-else
-  echo "[1/4] .env already exists — skipping."
-fi
+echo "    .env created."
 
-# ── 2. Verify UIDAI cert is present ─────────────────────────────────────────
-echo "[2/4] Checking UIDAI certificate..."
-if [ -f "certs/uidai_offline_publickey_2026.cer" ]; then
-  echo "    UIDAI offline public key found (valid until Feb 2029)."
-else
-  echo "    WARNING: UIDAI cert not found at certs/uidai_offline_publickey_2026.cer"
-  echo "    Signature validation will be skipped. Add the cert and restart."
-fi
+# ── Create PostgreSQL database ───────────────────────────────────────────────
+echo "[4/5] Setting up PostgreSQL database..."
+sudo service postgresql start 2>/dev/null || true
+sleep 2
+sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';" 2>/dev/null || true
+sudo -u postgres createdb aadhaar_platform 2>/dev/null || true
+echo "    Database ready."
 
-# ── 3. Pull Docker images in background ─────────────────────────────────────
-echo "[3/4] Pre-pulling Docker base images (speeds up first start)..."
-docker pull postgres:15-alpine &
-docker pull redis:7-alpine &
-docker pull minio/minio &
-wait
-echo "    Base images ready."
+# ── Init DB tables ───────────────────────────────────────────────────────────
+echo "[5/5] Creating database tables..."
+PYTHONPATH=$(pwd) python3 -c "
+import asyncio, os
+os.environ['DATABASE_URL'] = 'postgresql+asyncpg://postgres:postgres@localhost:5432/aadhaar_platform'
+from sqlalchemy.ext.asyncio import create_async_engine
+from src.db.models import Base
+async def init():
+    engine = create_async_engine(os.environ['DATABASE_URL'])
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    await engine.dispose()
+asyncio.run(init())
+" 2>/dev/null && echo "    Tables created." || echo "    Tables will be created on first start."
 
-# ── 4. Done ─────────────────────────────────────────────────────────────────
-echo "[4/4] Setup complete."
 echo ""
 echo "=================================================="
-echo "  Platform will start automatically."
-echo "  Once ready, open the PORTS tab and click"
-echo "  the globe icon next to port 3000."
-echo ""
-echo "  Dashboard  → port 3000"
-echo "  API Docs   → port 8000/api/docs"
-echo "  MinIO      → port 9001"
-echo "  n8n        → port 5678"
+echo "  Setup complete. Starting services now..."
 echo "=================================================="
-echo ""
