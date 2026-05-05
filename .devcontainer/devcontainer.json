@@ -1,0 +1,58 @@
+{
+  "name": "Aadhaar Verification Platform",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "dockerDashComposeVersion": "v2"
+    },
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11"
+    }
+  },
+
+  "forwardPorts": [3000, 8000, 9000, 9001, 5678],
+
+  "portsAttributes": {
+    "3000": {
+      "label": "Operator Dashboard",
+      "onAutoForward": "openBrowser"
+    },
+    "8000": {
+      "label": "API + Swagger",
+      "onAutoForward": "notify"
+    },
+    "9001": {
+      "label": "MinIO Storage Console",
+      "onAutoForward": "silent"
+    },
+    "5678": {
+      "label": "n8n Automation",
+      "onAutoForward": "silent"
+    }
+  },
+
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+
+  "postStartCommand": "docker compose up -d --build 2>&1 | tee /tmp/compose.log",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-azuretools.vscode-docker",
+        "humao.rest-client",
+        "rangav.vscode-thunder-client"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "python.defaultInterpreterPath": "/usr/local/bin/python3"
+      }
+    }
+  },
+
+  "remoteEnv": {
+    "COMPOSE_PROJECT_NAME": "aadhaar"
+  }
+}
