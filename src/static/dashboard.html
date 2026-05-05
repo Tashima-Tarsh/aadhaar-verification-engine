@@ -1,396 +1,290 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aadhaar Intelligence Platform | Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        :root {
-            --bg-dark: #0a0c10;
-            --glass: rgba(255, 255, 255, 0.03);
-            --glass-border: rgba(255, 255, 255, 0.08);
-            --accent: #3b82f6;
-            --accent-glow: rgba(59, 130, 246, 0.5);
-            --success: #10b981;
-            --warning: #f59e0b;
-            --error: #ef4444;
-            --text-main: #f3f4f6;
-            --text-dim: #9ca3af;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
-        }
-
-        body {
-            background-color: var(--bg-dark);
-            color: var(--text-main);
-            min-height: 100vh;
-            overflow-x: hidden;
-            background-image: 
-                radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.05) 0%, transparent 40%),
-                radial-gradient(circle at 80% 80%, rgba(16, 185, 129, 0.05) 0%, transparent 40%);
-        }
-
-        nav {
-            padding: 1.5rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--glass-border);
-            -webkit-backdrop-filter: blur(10px);
-            backdrop-filter: blur(10px);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .logo {
-            font-family: 'Outfit', sans-serif;
-            font-size: 1.5rem;
-            font-weight: 800;
-            background: linear-gradient(90deg, #fff, #3b82f6);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-            display: grid;
-            grid-template-columns: 1fr 350px;
-            gap: 2rem;
-        }
-
-        .card {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            padding: 2rem;
-            -webkit-backdrop-filter: blur(20px);
-            backdrop-filter: blur(20px);
-            transition: transform 0.3s ease, border-color 0.3s ease;
-        }
-
-        .card:hover {
-            border-color: rgba(59, 130, 246, 0.3);
-        }
-
-        .upload-section {
-            text-align: center;
-            padding: 4rem 2rem;
-            border: 2px dashed var(--glass-border);
-            border-radius: 20px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .upload-section:hover {
-            background: rgba(59, 130, 246, 0.03);
-            border-color: var(--accent);
-        }
-
-        .upload-icon {
-            color: var(--accent);
-            margin-bottom: 1.5rem;
-            filter: drop-shadow(0 0 10px var(--accent-glow));
-        }
-
-        .btn-primary {
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 0.8rem 2rem;
-            border-radius: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.5);
-        }
-
-        .results-grid {
-            margin-top: 2rem;
-            display: none;
-            animation: slideUp 0.5s ease forwards;
-        }
-
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .data-point {
-            display: flex;
-            justify-content: space-between;
-            padding: 1rem 0;
-            border-bottom: 1px solid var(--glass-border);
-        }
-
-        .label { color: var(--text-dim); font-size: 0.9rem; }
-        .value { font-weight: 600; }
-
-        .risk-badge {
-            padding: 0.4rem 1rem;
-            border-radius: 100px;
-            font-size: 0.8rem;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-
-        .risk-low { background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.2); }
-        .risk-medium { background: rgba(245, 158, 11, 0.1); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.2); }
-        .risk-high { background: rgba(239, 68, 68, 0.1); color: var(--error); border: 1px solid rgba(239, 68, 68, 0.2); }
-
-        .photo-container {
-            width: 120px;
-            height: 140px;
-            background: var(--glass-border);
-            border-radius: 12px;
-            overflow: hidden;
-            margin-bottom: 1rem;
-        }
-
-        .sidebar h3 { margin-bottom: 1.5rem; font-family: 'Outfit', sans-serif; }
-        
-        .audit-item {
-            padding: 1rem;
-            background: var(--glass);
-            border-radius: 12px;
-            margin-bottom: 1rem;
-            font-size: 0.85rem;
-            border: 1px solid transparent;
-        }
-
-        .audit-item:hover { border-color: var(--glass-border); }
-        .audit-time { color: var(--text-dim); font-size: 0.75rem; display: block; margin-bottom: 0.3rem; }
-
-        #loading {
-            display: none;
-            text-align: center;
-            padding: 2rem;
-        }
-
-        .loader {
-            width: 48px;
-            height: 48px;
-            border: 5px solid var(--glass-border);
-            border-bottom-color: var(--accent);
-            border-radius: 50%;
-            display: inline-block;
-            animation: rotation 1s linear infinite;
-        }
-
-        @keyframes rotation {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .status-pill {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.8rem;
-            color: var(--text-dim);
-            margin-top: 1rem;
-        }
-
-        .status-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; box-shadow: 0 0 10px var(--success); }
-
-        /* Classes to replace inline styles */
-        .mb-2 { margin-bottom: 2rem; }
-        .mt-1 { margin-top: 1rem; }
-        .mt-2 { margin-top: 2rem; }
-        .mt-05 { margin-top: 0.5rem; }
-        .my-upload { margin: 0.5rem 0 1.5rem 0; }
-        .font-outfit { font-family: 'Outfit', sans-serif; }
-        .text-dim { color: var(--text-dim); }
-        .flex { display: flex; }
-        .gap-2 { gap: 2rem; }
-        .gap-1 { gap: 1rem; }
-        .align-start { align-items: flex-start; }
-        .justify-between { justify-content: space-between; }
-        .align-center { align-items: center; }
-        .flex-1 { flex: 1; }
-        .w-full { width: 100%; }
-        .h-full { height: 100%; }
-        .obj-cover { object-fit: cover; }
-        .hidden { display: none; }
-        .fs-1-8 { font-size: 1.8rem; }
-        .fs-1-1 { font-size: 1.1rem; }
-        .fs-1-2 { font-size: 1.2rem; }
-        .mb-1-5 { margin-bottom: 1.5rem; }
-        .mb-1 { margin-bottom: 1rem; }
-        .line-height-1-6 { line-height: 1.6; }
-        .text-success { color: var(--success); }
-        .inner-card { background: rgba(255,255,255,0.01); padding: 1.5rem; border-radius: 16px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aadhaar Verification Platform</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+  header { background: #1e293b; border-bottom: 1px solid #334155; padding: 16px 32px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 20px; font-weight: 700; color: #f8fafc; }
+  header span { background: #3b82f6; color: white; font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 600; }
+  .container { max-width: 900px; margin: 40px auto; padding: 0 24px; }
+  .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 28px; margin-bottom: 24px; }
+  .card h2 { font-size: 13px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 20px; }
+  .setup-row { display: flex; gap: 12px; margin-bottom: 16px; }
+  .setup-row input { flex: 1; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 10px 14px; color: #f1f5f9; font-size: 14px; }
+  .setup-row input::placeholder { color: #475569; }
+  button { background: #3b82f6; color: white; border: none; border-radius: 8px; padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  button:hover { background: #2563eb; }
+  button:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+  .drop-zone { border: 2px dashed #334155; border-radius: 12px; padding: 48px; text-align: center; cursor: pointer; margin-bottom: 16px; }
+  .drop-zone:hover { border-color: #3b82f6; background: #1e3a5f22; }
+  .drop-zone p { color: #64748b; font-size: 15px; margin-top: 8px; }
+  .drop-zone .icon { font-size: 48px; }
+  .drop-zone .file-name { color: #3b82f6; font-weight: 600; margin-top: 8px; }
+  .ref-row { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; }
+  .ref-row input { flex: 1; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 10px 14px; color: #f1f5f9; font-size: 14px; }
+  .result { display: none; }
+  .result.show { display: block; }
+  .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; }
+  .badge.low { background: #14532d; color: #4ade80; }
+  .badge.medium { background: #713f12; color: #fbbf24; }
+  .badge.high { background: #7f1d1d; color: #f87171; }
+  .badge.completed { background: #14532d; color: #4ade80; }
+  .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+  .data-item { background: #0f172a; border-radius: 8px; padding: 12px 16px; }
+  .data-item label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 4px; }
+  .data-item span { font-size: 15px; color: #f1f5f9; font-weight: 500; }
+  .status-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .spinner { width: 20px; height: 20px; border: 2px solid #334155; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .msg { font-size: 14px; color: #94a3b8; }
+  .error-box { background: #7f1d1d22; border: 1px solid #7f1d1d; border-radius: 8px; padding: 14px; color: #f87171; font-size: 14px; margin-top: 12px; }
+  .success-box { background: #14532d22; border: 1px solid #14532d; border-radius: 8px; padding: 14px; font-size: 14px; margin-top: 12px; }
+  .api-link { color: #3b82f6; text-decoration: none; font-size: 13px; }
+  .key-box { background: #0f172a; border: 1px solid #3b82f6; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 13px; color: #60a5fa; word-break: break-all; margin-top: 12px; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; }
+  .tab { padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; color: #64748b; border: 1px solid transparent; }
+  .tab.active { background: #1e3a5f; color: #60a5fa; border-color: #3b82f6; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .address-block { background: #0f172a; border-radius: 8px; padding: 12px 16px; margin-top: 12px; font-size: 14px; color: #cbd5e1; line-height: 1.6; }
+  .qr-valid { color: #4ade80; } .qr-invalid { color: #f87171; }
+</style>
 </head>
 <body>
-    <nav>
-        <div class="logo">
-            <i data-lucide="shield-check"></i>
-            AADHAAR INTEL
-        </div>
-        <div class="status-pill">
-            <div class="status-dot"></div>
-            System Online
-        </div>
-    </nav>
 
-    <div class="container">
-        <main>
-            <div class="card">
-                <h2 class="mb-2 font-outfit">Verification Hub</h2>
-                <div class="upload-section" onclick="document.getElementById('fileInput').click()">
-                    <i data-lucide="cloud-upload" class="upload-icon" size="48"></i>
-                    <h3>Upload Identity Document</h3>
-                    <p class="text-dim my-upload">Aadhaar Image (JPG/PNG), PDF, or XML</p>
-                    <button class="btn-primary">Select File</button>
-                    <input type="file" id="fileInput" hidden onchange="handleFileUpload(event)">
-                </div>
+<header>
+  <div>🔐</div>
+  <h1>Aadhaar Offline Verification Platform</h1>
+  <span>OFFLINE</span>
+</header>
 
-                <div id="loading">
-                    <span class="loader"></span>
-                    <p class="mt-1 text-dim">Analyzing document intelligence...</p>
-                </div>
+<div class="container">
 
-                <div id="results" class="results-grid">
-                    <div class="flex gap-2 align-start">
-                        <div class="photo-container">
-                            <img id="resPhoto" src="" alt="Aadhaar Photo" class="w-full h-full obj-cover hidden">
-                            <div id="photoPlaceholder" class="w-full h-full flex align-center justify-center text-dim">
-                                <i data-lucide="user"></i>
-                            </div>
-                        </div>
-                        <div class="flex-1">
-                            <div class="flex justify-between align-center mb-1-5">
-                                <h3 id="resName" class="fs-1-8 font-outfit">---</h3>
-                                <span id="resRisk" class="risk-badge">Low Risk</span>
-                            </div>
-                            <div class="data-point"><span class="label">Aadhaar Number</span><span id="resUid" class="value">XXXX-XXXX-XXXX</span></div>
-                            <div class="data-point"><span class="label">Date of Birth</span><span id="resDob" class="value">---</span></div>
-                            <div class="data-point"><span class="label">Gender</span><span id="resGender" class="value">---</span></div>
-                            <div class="data-point"><span class="label">Signature Status</span><span id="resQr" class="value text-success">Validated</span></div>
-                        </div>
-                    </div>
-                    
-                    <div class="mt-2">
-                        <h4 class="text-dim mb-1">Address Intelligence</h4>
-                        <div class="card inner-card">
-                            <p id="resAddress" class="line-height-1-6 fs-1-1">---</p>
-                        </div>
-                    </div>
+  <div class="card" id="setup-card">
+    <h2>Connect Your Account</h2>
+    <div class="setup-row">
+      <input type="text" id="api-key-input" placeholder="Paste your API key (64 characters)" />
+      <button onclick="saveKey()">Connect</button>
+    </div>
+    <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+      <button onclick="createTenant()" style="background:#0f172a; border:1px solid #334155; font-size:13px; padding:6px 14px;">Create New Account</button>
+      <a href="/api/docs" target="_blank" class="api-link">→ Open Swagger API Docs</a>
+    </div>
+    <div id="key-result"></div>
+  </div>
 
-                    <div class="mt-2 flex gap-1">
-                        <div class="audit-item flex-1">
-                            <span class="label">Processing Latency</span>
-                            <div id="resLatency" class="value fs-1-2 mt-05">0ms</div>
-                        </div>
-                        <div class="audit-item flex-1">
-                            <span class="label">Quality Score</span>
-                            <div id="resQuality" class="value fs-1-2 mt-05">0.0</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </main>
-
-        <aside class="sidebar">
-            <div class="card h-full">
-                <h3>Live Intelligence</h3>
-                <div id="auditLog">
-                    <div class="audit-item">
-                        <span class="audit-time">Just now</span>
-                        Waiting for document ingestion...
-                    </div>
-                </div>
-            </div>
-        </aside>
+  <div class="card" id="main-card" style="display:none;">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('verify')">Verify Aadhaar</div>
+      <div class="tab" onclick="switchTab('reports')">Reports</div>
+      <div class="tab" onclick="switchTab('account')">Account</div>
     </div>
 
-    <script>
-        lucide.createIcons();
+    <div class="tab-content active" id="tab-verify">
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <div class="icon">📄</div>
+        <p>Click to upload or drag & drop your Aadhaar document</p>
+        <p style="font-size:12px; margin-top:4px;">JPG · PNG · PDF · XML</p>
+        <div class="file-name" id="file-name"></div>
+      </div>
+      <input type="file" id="file-input" accept=".jpg,.jpeg,.png,.pdf,.xml" style="display:none" onchange="fileSelected(this)">
+      <div class="ref-row">
+        <input type="text" id="ref-input" placeholder="Reference ID (e.g. CUST-001)" />
+        <button onclick="verify()" id="verify-btn">Verify Now</button>
+      </div>
+      <div class="result" id="result-panel">
+        <div class="status-bar" id="status-bar">
+          <div class="spinner" id="spinner"></div>
+          <span class="msg" id="status-msg">Submitting...</span>
+        </div>
+        <div id="result-content"></div>
+      </div>
+    </div>
 
-        async function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+    <div class="tab-content" id="tab-reports">
+      <div style="display:flex; gap:12px; margin-bottom:16px; align-items:center;">
+        <select id="days-select" style="background:#0f172a; border:1px solid #334155; border-radius:8px; padding:8px 12px; color:#f1f5f9; font-size:14px;">
+          <option value="7">Last 7 days</option>
+          <option value="30" selected>Last 30 days</option>
+          <option value="90">Last 90 days</option>
+        </select>
+        <button onclick="loadReports()">Refresh</button>
+        <button onclick="exportCSV()" style="background:#0f172a; border:1px solid #334155;">Export CSV</button>
+      </div>
+      <div class="data-grid">
+        <div class="data-item"><label>Total Verifications</label><span id="r-total">—</span></div>
+        <div class="data-item"><label>Completed</label><span id="r-completed">—</span></div>
+        <div class="data-item"><label>Failed</label><span id="r-failed">—</span></div>
+        <div class="data-item"><label>Avg Processing Time</label><span id="r-avg">—</span></div>
+      </div>
+      <div class="data-item" style="margin-top:12px;"><label>Risk Breakdown</label><span id="r-risk">—</span></div>
+    </div>
 
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('results').style.display = 'none';
-            addAuditLog(`Received file: ${file.name}`);
+    <div class="tab-content" id="tab-account">
+      <div class="data-item" style="margin-bottom:12px;"><label>Your API Key</label><div class="key-box" id="account-key"></div></div>
+      <button onclick="logout()" style="background:#7f1d1d; margin-top:8px;">Disconnect</button>
+    </div>
+  </div>
 
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('reference_id', 'REF-' + Date.now());
+</div>
 
-            try {
-                addAuditLog(`Orchestrating verification pipeline...`);
-                const response = await fetch('/api/v1/verify', {
-                    method: 'POST',
-                    headers: { 'X-API-Key': 'test_key' },
-                    body: formData
-                });
+<script>
+const BASE = '';
+let API_KEY = localStorage.getItem('aadhaar_api_key') || '';
+let selectedFile = null;
 
-                const data = await response.json();
-                
-                if (data.status === 'COMPLETED') {
-                    showResults(data);
-                } else {
-                    alert('Verification Failed: ' + data.error_message);
-                    addAuditLog(`Error: ${data.error_code}`, 'error');
-                }
-            } catch (err) {
-                console.error(err);
-                alert('Connection error');
-            } finally {
-                document.getElementById('loading').style.display = 'none';
-            }
-        }
+window.onload = () => { if (API_KEY) showMain(); };
 
-        function showResults(data) {
-            document.getElementById('results').style.display = 'block';
-            document.getElementById('resName').innerText = data.name || 'Unknown';
-            document.getElementById('resUid').innerText = data.masked_aadhaar;
-            document.getElementById('resDob').innerText = data.dob || '---';
-            document.getElementById('resGender').innerText = data.gender || '---';
-            document.getElementById('resAddress').innerText = data.address?.full || '---';
-            document.getElementById('resLatency').innerText = data.processing_time_ms + 'ms';
-            document.getElementById('resQuality').innerText = (data.image_quality_score || 0.85).toFixed(2);
-            
-            const riskElem = document.getElementById('resRisk');
-            riskElem.innerText = data.risk_score + ' Risk';
-            riskElem.className = 'risk-badge risk-' + data.risk_score.toLowerCase();
+function saveKey() {
+  const k = document.getElementById('api-key-input').value.trim();
+  if (k.length < 10) { alert('Paste a valid API key'); return; }
+  API_KEY = k; localStorage.setItem('aadhaar_api_key', k); showMain();
+}
 
-            addAuditLog(`Verification Completed in ${data.processing_time_ms}ms`);
-            addAuditLog(`Risk Assessment: ${data.risk_score}`);
-            lucide.createIcons();
-        }
+async function createTenant() {
+  const name = prompt('Enter your company or your name:');
+  if (!name) return;
+  const r = await fetch('/api/v1/tenants', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name}) });
+  const d = await r.json();
+  if (d.api_key) {
+    document.getElementById('key-result').innerHTML =
+      `<div class="success-box">✅ Account created!<br><b>Your API Key (save this — shown only once):</b><div class="key-box">${d.api_key}</div><br><button onclick="document.getElementById('api-key-input').value='${d.api_key}';saveKey()">Use This Key →</button></div>`;
+  } else {
+    document.getElementById('key-result').innerHTML = `<div class="error-box">${JSON.stringify(d)}</div>`;
+  }
+}
 
-        function addAuditLog(msg) {
-            const log = document.getElementById('auditLog');
-            const item = document.createElement('div');
-            item.className = 'audit-item';
-            item.innerHTML = `
-                <span class="audit-time">${new Date().toLocaleTimeString()}</span>
-                ${msg}
-            `;
-            log.insertBefore(item, log.firstChild);
-        }
-    </script>
+function showMain() {
+  document.getElementById('setup-card').style.display='none';
+  document.getElementById('main-card').style.display='block';
+  document.getElementById('account-key').textContent = API_KEY;
+  loadReports();
+}
+
+function logout() {
+  localStorage.removeItem('aadhaar_api_key'); API_KEY='';
+  document.getElementById('setup-card').style.display='block';
+  document.getElementById('main-card').style.display='none';
+}
+
+function switchTab(tab) {
+  ['verify','reports','account'].forEach((t,i) => {
+    document.querySelectorAll('.tab')[i].classList.toggle('active', t===tab);
+    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+  });
+  if (tab==='reports') loadReports();
+}
+
+function fileSelected(input) {
+  selectedFile = input.files[0];
+  document.getElementById('file-name').textContent = '✅ ' + selectedFile.name + ' (' + (selectedFile.size/1024).toFixed(1) + ' KB)';
+  if (!document.getElementById('ref-input').value)
+    document.getElementById('ref-input').value = 'CUST-' + Date.now().toString().slice(-6);
+}
+
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.borderColor='#3b82f6'; });
+dz.addEventListener('dragleave', () => { dz.style.borderColor='#334155'; });
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.style.borderColor='#334155';
+  selectedFile = e.dataTransfer.files[0];
+  document.getElementById('file-name').textContent = '✅ ' + selectedFile.name;
+});
+
+async function verify() {
+  if (!selectedFile) { alert('Select an Aadhaar file first.'); return; }
+  const refId = document.getElementById('ref-input').value.trim() || 'CUST-' + Date.now();
+  document.getElementById('verify-btn').disabled = true;
+  document.getElementById('result-panel').className = 'result show';
+  document.getElementById('spinner').style.display = 'block';
+  document.getElementById('status-msg').textContent = 'Uploading...';
+  document.getElementById('result-content').innerHTML = '';
+
+  const form = new FormData();
+  form.append('file', selectedFile);
+  form.append('reference_id', refId);
+
+  try {
+    const r = await fetch('/api/v1/verify', { method:'POST', headers:{'X-API-Key':API_KEY}, body:form });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || JSON.stringify(d));
+    document.getElementById('status-msg').textContent = 'Processing... (checking every 2 seconds)';
+    pollResult(d.request_id);
+  } catch(e) { showError(e.message); }
+}
+
+async function pollResult(reqId) {
+  for (let i=0; i<30; i++) {
+    await new Promise(r => setTimeout(r, 2000));
+    try {
+      const r = await fetch('/api/v1/verify/'+reqId+'/status', { headers:{'X-API-Key':API_KEY} });
+      const d = await r.json();
+      document.getElementById('status-msg').textContent = 'Status: ' + d.status + ' (' + (i*2) + 's)';
+      if (d.status==='COMPLETED') { showResult(d); return; }
+      if (d.status==='FAILED') { showError(d.error_message || 'Verification failed'); return; }
+    } catch(e) {}
+  }
+  showError('Timeout — try again');
+}
+
+function showResult(d) {
+  document.getElementById('spinner').style.display='none';
+  document.getElementById('status-msg').textContent='Verification complete';
+  document.getElementById('verify-btn').disabled=false;
+  const riskClass=(d.risk_score||'').toLowerCase();
+  const qr = d.qr_valid ? '<span class="qr-valid">✅ Valid</span>' : '<span class="qr-invalid">❌ Invalid</span>';
+  let addr = '';
+  if (d.address) {
+    const a = d.address;
+    addr = '<div class="address-block"><b>Address:</b><br>' + (typeof a==='string' ? a : [a.house,a.street,a.landmark,a.locality,a.city,a.district,a.state,a.pincode].filter(Boolean).join(', ')) + '</div>';
+  }
+  document.getElementById('result-content').innerHTML = `
+    <div class="success-box">
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;">
+        <span class="badge completed">COMPLETED</span>
+        <span class="badge ${riskClass}">${d.risk_score||'N/A'} RISK</span>
+        <span style="color:#64748b;font-size:13px;">${d.processing_time_ms||0}ms</span>
+      </div>
+      <div class="data-grid">
+        <div class="data-item"><label>Full Name</label><span>${d.name||'—'}</span></div>
+        <div class="data-item"><label>Date of Birth</label><span>${d.dob||'—'}</span></div>
+        <div class="data-item"><label>Gender</label><span>${d.gender||'—'}</span></div>
+        <div class="data-item"><label>Masked Aadhaar</label><span>${d.masked_aadhaar||'—'}</span></div>
+        <div class="data-item"><label>QR Signature</label><span>${qr}</span></div>
+        <div class="data-item"><label>Image Quality</label><span>${d.image_quality_score?(d.image_quality_score*100).toFixed(0)+'%':'—'}</span></div>
+      </div>${addr}
+    </div>`;
+}
+
+function showError(msg) {
+  document.getElementById('spinner').style.display='none';
+  document.getElementById('verify-btn').disabled=false;
+  document.getElementById('status-msg').textContent='Error';
+  document.getElementById('result-content').innerHTML='<div class="error-box">❌ '+msg+'</div>';
+}
+
+async function loadReports() {
+  if (!API_KEY) return;
+  const days = document.getElementById('days-select')?.value||30;
+  try {
+    const r = await fetch('/api/v1/reports/summary?days='+days, {headers:{'X-API-Key':API_KEY}});
+    const d = await r.json();
+    document.getElementById('r-total').textContent = d.total_verifications??'—';
+    document.getElementById('r-completed').textContent = d.completed??'—';
+    document.getElementById('r-failed').textContent = d.failed??'—';
+    document.getElementById('r-avg').textContent = d.avg_processing_time_ms ? d.avg_processing_time_ms.toFixed(0)+' ms':'—';
+    const rb=d.risk_breakdown||{};
+    document.getElementById('r-risk').textContent = Object.entries(rb).map(([k,v])=>k+': '+v).join(' · ')||'No data yet';
+  } catch(e){}
+}
+
+function exportCSV() {
+  window.open('/api/v1/reports/export/csv?days='+(document.getElementById('days-select')?.value||30), '_blank');
+}
+</script>
 </body>
 </html>

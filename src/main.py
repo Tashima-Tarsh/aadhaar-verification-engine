@@ -45,6 +45,10 @@ static_path = os.path.join(os.path.dirname(__file__), "static")
 if os.path.isdir(static_path):
     app.mount("/static", StaticFiles(directory=static_path), name="static")
 
+    @app.get("/", include_in_schema=False)
+    async def root():
+        return FileResponse(os.path.join(static_path, "dashboard.html"))
+
     @app.get("/dashboard", include_in_schema=False)
     async def get_dashboard():
         return FileResponse(os.path.join(static_path, "dashboard.html"))
